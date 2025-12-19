@@ -22,8 +22,21 @@ let state = {
 function init() {
     loadData();
     // Secrets override
-    if (DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER') state.settings.apiKey = DEPLOYED_CONFIG.apiKey;
-    if (DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER') state.settings.password = DEPLOYED_CONFIG.password;
+    const hasHardcodedKey = DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER';
+    const hasHardcodedPass = DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER';
+
+    if (hasHardcodedKey) {
+        state.settings.apiKey = DEPLOYED_CONFIG.apiKey;
+        document.getElementById('api-key-group').classList.add('hidden');
+    }
+    if (hasHardcodedPass) {
+        state.settings.password = DEPLOYED_CONFIG.password;
+        document.getElementById('app-password-group').classList.add('hidden');
+    }
+
+    if (hasHardcodedKey && hasHardcodedPass) {
+        document.getElementById('save-settings-btn').classList.add('hidden');
+    }
 
     if (state.settings.password) {
         renderLockScreen();

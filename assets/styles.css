@@ -1,0 +1,8 @@
+body { background-color: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
+.outfit { font-family: 'Outfit', sans-serif; }
+.glass { background: rgba(20, 20, 20, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+@media all and (display-mode: standalone) { body { padding-top: env(safe-area-inset-top); } }

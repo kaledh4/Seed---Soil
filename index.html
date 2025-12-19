@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="auto">
 
 <head>
     <meta charset="UTF-8">
@@ -7,7 +7,7 @@
     <title>Seed & Soil</title>
     <meta name="description" content="Turn passive consumption into active wisdom.">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0a0a0a">
+    <meta name="theme-color" content="#0f0e0d">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -17,8 +17,16 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: { dark: '#0a0a0a', card: '#141414', accent: '#3b82f6' },
-                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+                    colors: {
+                        dark: '#0f0e0d',
+                        card: '#1c1a18',
+                        accent: '#b5a48b',
+                        muted: '#8c857d'
+                    },
+                    fontFamily: {
+                        sans: ['"IBM Plex Sans"', '"IBM Plex Sans Arabic"', 'sans-serif'],
+                        serif: ['"IBM Plex Serif"', 'serif']
+                    }
                 }
             }
         }
@@ -27,44 +35,44 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@300;400;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;1,400&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="assets/styles.css">
 </head>
 
-<body class="dark flex justify-center">
+<body class="dark flex justify-center min-h-screen">
     <main id="main-view" class="w-full max-w-2xl h-full flex flex-col items-center justify-center"></main>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6">
-        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="toggleSettings()"></div>
-        <div class="glass w-full max-w-xs p-6 rounded-3xl relative animate-fade-in">
-            <h2 class="text-xl font-semibold mb-6 outfit">Settings</h2>
-            <div class="space-y-4">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-xl" onclick="toggleSettings()"></div>
+        <div class="glass w-full max-w-xs p-8 rounded-[2rem] relative animate-fade-in border border-white/5">
+            <h2 class="text-xl font-medium mb-8 tracking-tight">Settings</h2>
+            <div class="space-y-6">
                 <div id="api-key-group">
-                    <label class="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">OpenRouter API
+                    <label class="text-[10px] text-muted uppercase tracking-[0.2em] mb-2 block">OpenRouter API
                         Key</label>
-                    <input type="password" id="api-key" placeholder="sk-or-..."
-                        class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:border-accent outline-none transition-all">
+                    <input type="password" id="api-key" placeholder="••••••••••••"
+                        class="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-accent/50 outline-none transition-all">
                 </div>
                 <div id="app-password-group">
-                    <label class="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">App Password</label>
-                    <input type="password" id="app-password" placeholder="Optional lock"
-                        class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:border-accent outline-none transition-all">
+                    <label class="text-[10px] text-muted uppercase tracking-[0.2em] mb-2 block">App Password</label>
+                    <input type="password" id="app-password" placeholder="••••••••"
+                        class="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-accent/50 outline-none transition-all">
                 </div>
                 <button id="save-settings-btn" onclick="saveSettings()"
-                    class="w-full bg-accent text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-600 transition-colors">Save
+                    class="w-full bg-accent text-dark py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] hover:brightness-110 transition-all">Save
                     Changes</button>
 
-                <div class="pt-4 border-t border-zinc-800 space-y-2">
+                <div class="pt-6 border-t border-white/5 space-y-3">
                     <button onclick="logout()"
-                        class="w-full text-zinc-500 py-2 text-[10px] uppercase tracking-widest hover:text-white transition-colors">Lock
+                        class="w-full text-muted py-2 text-[10px] uppercase tracking-[0.2em] hover:text-white transition-colors">Lock
                         App</button>
                     <button onclick="exportData()"
-                        class="w-full text-zinc-500 py-2 text-[10px] uppercase tracking-widest hover:text-white transition-colors">Export
+                        class="w-full text-muted py-2 text-[10px] uppercase tracking-[0.2em] hover:text-white transition-colors">Export
                         JSON</button>
                     <button onclick="clearAllData()"
-                        class="w-full text-red-500/50 py-2 text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors">Wipe
+                        class="w-full text-red-900/50 py-2 text-[10px] uppercase tracking-[0.2em] hover:text-red-500 transition-colors">Wipe
                         All Data</button>
                 </div>
             </div>
@@ -73,7 +81,7 @@
 
     <!-- Toast Notification -->
     <div id="toast"
-        class="fixed bottom-10 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest opacity-0 pointer-events-none transition-all duration-300 z-[200] text-accent">
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 glass px-8 py-4 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] opacity-0 pointer-events-none transition-all duration-500 z-[200] text-accent border border-accent/20">
     </div>
 
     <script src="assets/app.js"></script>

@@ -8,7 +8,7 @@ const DEPLOYED_CONFIG = {
 
 let state = {
     items: [],
-    gaps: [], // Daily suggestions/gaps
+    gaps: [],
     settings: {
         apiKey: DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER' ? DEPLOYED_CONFIG.apiKey : '',
         password: DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER' ? DEPLOYED_CONFIG.password : ''
@@ -21,7 +21,6 @@ let state = {
 
 function init() {
     loadData();
-    // Secrets override
     const hasHardcodedKey = DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER';
     const hasHardcodedPass = DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER';
 
@@ -33,7 +32,6 @@ function init() {
         state.settings.password = DEPLOYED_CONFIG.password;
         document.getElementById('app-password-group').classList.add('hidden');
     }
-
     if (hasHardcodedKey && hasHardcodedPass) {
         document.getElementById('save-settings-btn').classList.add('hidden');
     }
@@ -91,15 +89,15 @@ function renderLockScreen() {
     const main = document.getElementById('main-view');
     main.innerHTML = `
         <div class="w-full max-w-xs animate-fade-in flex flex-col items-center">
-            <div class="w-20 h-20 glass rounded-full flex items-center justify-center mb-8">
-                <i data-lucide="shield-check" class="w-8 h-8 text-accent"></i>
+            <div class="w-24 h-24 glass rounded-full flex items-center justify-center mb-12 border border-white/5">
+                <i data-lucide="lock" class="w-8 h-8 text-accent/60"></i>
             </div>
-            <h1 class="text-3xl font-light outfit mb-8">Seed & Soil</h1>
+            <h1 class="text-3xl font-light mb-12 tracking-tight">Seed & Soil</h1>
             <input type="password" id="lock-input" 
-                class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-center outfit focus:border-accent outline-none transition-all" 
-                placeholder="Password" 
+                class="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-5 text-center focus:border-accent/40 outline-none transition-all mb-4" 
+                placeholder="••••••••" 
                 onkeydown="if(event.key==='Enter') unlock()">
-            <button onclick="unlock()" class="w-full mt-4 bg-white text-black py-4 rounded-2xl font-bold outfit hover:bg-zinc-200 transition-all">Unlock</button>
+            <button onclick="unlock()" class="w-full bg-accent text-dark py-5 rounded-2xl font-bold text-[10px] uppercase tracking-[0.2em] hover:brightness-110 transition-all">Unlock</button>
         </div>`;
     lucide.createIcons();
     document.getElementById('lock-input').focus();
@@ -118,76 +116,76 @@ function unlock() {
 
 function renderDashboard() {
     const main = document.getElementById('main-view');
-    main.className = "w-full max-w-2xl h-full flex flex-col p-4 overflow-y-auto";
+    main.className = "w-full max-w-2xl h-full flex flex-col p-6 overflow-y-auto";
 
     const activeItems = state.items.filter(i => i.soil.status === 'active');
     const triageItems = activeItems.filter(i => i.seed).slice(0, 3);
 
     main.innerHTML = `
         <!-- Header -->
-        <header class="flex justify-between items-center mb-10 safe-top">
-            <h1 class="text-xl font-semibold outfit tracking-tight">Seed & Soil</h1>
-            <div class="flex gap-3">
-                <button onclick="processPulse()" class="p-2 glass rounded-xl text-accent hover:bg-accent/10 transition-colors">
+        <header class="flex justify-between items-center mb-16 safe-top">
+            <h1 class="text-xl font-medium tracking-tight">Seed & Soil</h1>
+            <div class="flex gap-4">
+                <button onclick="processPulse()" class="p-3 glass rounded-2xl text-accent/80 hover:bg-accent/10 transition-all">
                     <i data-lucide="zap" class="w-5 h-5"></i>
                 </button>
-                <button onclick="toggleSettings()" class="p-2 glass rounded-xl text-zinc-500 hover:text-white transition-colors">
+                <button onclick="toggleSettings()" class="p-3 glass rounded-2xl text-muted hover:text-white transition-all">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                 </button>
             </div>
         </header>
 
-        <!-- Knowledge Gaps / Daily Suggestions -->
-        <section class="mb-12">
-            <div class="flex items-center gap-2 mb-4">
-                <i data-lucide="sparkles" class="w-4 h-4 text-accent"></i>
-                <h2 class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Daily Wisdom & Gaps</h2>
+        <!-- Knowledge Gaps -->
+        <section class="mb-16">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-1 h-1 rounded-full bg-accent"></div>
+                <h2 class="text-[10px] uppercase tracking-[0.2em] text-muted font-bold">Daily Synthesis</h2>
             </div>
             <div class="grid grid-cols-1 gap-4">
                 ${state.gaps.length > 0 ? state.gaps.map(gap => `
-                    <div class="glass p-5 rounded-2xl border-l-2 border-accent/30">
+                    <div class="glass p-6 rounded-3xl border border-accent/5">
                         <p class="text-sm text-zinc-300 leading-relaxed">${gap}</p>
                     </div>
                 `).join('') : `
-                    <div class="glass p-8 rounded-2xl text-center border-dashed border-zinc-800">
-                        <p class="text-xs text-zinc-600">No gaps detected. Run Pulse to analyze your soil.</p>
+                    <div class="glass p-10 rounded-3xl text-center border-dashed border-white/5">
+                        <p class="text-[10px] uppercase tracking-[0.1em] text-muted/50">Pulse required for synthesis</p>
                     </div>
                 `}
             </div>
         </section>
 
-        <!-- The Void (Capture) -->
-        <section class="mb-12">
-            <div class="glass rounded-3xl p-6 relative group">
+        <!-- The Void -->
+        <section class="mb-16">
+            <div class="glass rounded-[2.5rem] p-8 relative group border border-white/5">
                 <textarea id="capture-input" 
-                    class="w-full bg-transparent text-lg outfit focus:outline-none resize-none h-24" 
-                    placeholder="What did you learn today?"
+                    class="w-full bg-transparent text-lg focus:outline-none resize-none h-32 leading-relaxed" 
+                    placeholder="Drop a seed..."
                     onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter') captureSeed()"></textarea>
-                <div class="flex justify-between items-center mt-4">
-                    <span class="text-[10px] text-zinc-600 uppercase tracking-widest">Cmd + Enter to save</span>
-                    <button onclick="captureSeed()" class="bg-white text-black px-4 py-2 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-all">Save Seed</button>
+                <div class="flex justify-between items-center mt-6">
+                    <span class="text-[9px] text-muted uppercase tracking-[0.2em] opacity-40">Cmd + Enter</span>
+                    <button onclick="captureSeed()" class="bg-accent text-dark px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] hover:brightness-110 transition-all">Capture</button>
                 </div>
             </div>
         </section>
 
-        <!-- Triage (Review) -->
+        <!-- Triage -->
         ${triageItems.length > 0 ? `
-        <section class="mb-12">
-            <div class="flex items-center gap-2 mb-4">
-                <i data-lucide="trello" class="w-4 h-4 text-accent"></i>
-                <h2 class="text-xs uppercase tracking-widest text-zinc-500 font-bold">The Triage</h2>
+        <section class="mb-16">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-1 h-1 rounded-full bg-accent"></div>
+                <h2 class="text-[10px] uppercase tracking-[0.2em] text-muted font-bold">The Triage</h2>
             </div>
-            <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-6">
                 ${triageItems.map(item => `
-                    <div class="glass p-6 rounded-2xl animate-fade-in relative overflow-hidden">
+                    <div class="glass p-8 rounded-[2rem] animate-fade-in relative overflow-hidden wisdom-card border border-white/5">
                         <div class="strength-bar absolute top-0 left-0 w-full">
                             <div class="strength-fill" style="width: ${item.soil.strength * 100}%"></div>
                         </div>
-                        <h3 class="text-lg outfit font-medium mb-3 mt-2">${item.seed.essence}</h3>
-                        <p class="text-sm text-zinc-400 italic mb-6">"${item.seed.action}"</p>
-                        <div class="flex gap-3">
-                            <button onclick="interact('${item.id}', true)" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-xs font-bold transition-all">I DID THIS</button>
-                            <button onclick="interact('${item.id}', false)" class="px-4 glass text-zinc-500 hover:text-red-400 rounded-xl transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <h3 class="text-xl font-medium mb-4 mt-2 leading-tight">${item.seed.essence}</h3>
+                        <p class="text-sm text-muted italic mb-8 leading-relaxed">"${item.seed.action}"</p>
+                        <div class="flex gap-4">
+                            <button onclick="interact('${item.id}', true)" class="flex-1 bg-accent/10 border border-accent/20 text-accent py-4 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-accent hover:text-dark transition-all">I DID THIS</button>
+                            <button onclick="interact('${item.id}', false)" class="px-6 glass text-muted hover:text-red-400 rounded-xl transition-all border border-white/5"><i data-lucide="archive" class="w-4 h-4"></i></button>
                         </div>
                     </div>
                 `).join('')}
@@ -195,36 +193,36 @@ function renderDashboard() {
         </section>
         ` : ''}
 
-        <!-- Active Wisdom (The Past) -->
-        <section class="mb-20">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="layers" class="w-4 h-4 text-zinc-500"></i>
-                    <h2 class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Active Wisdom</h2>
+        <!-- Active Wisdom -->
+        <section class="mb-24">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-3">
+                    <div class="w-1 h-1 rounded-full bg-muted/30"></div>
+                    <h2 class="text-[10px] uppercase tracking-[0.2em] text-muted font-bold">Active Soil</h2>
                 </div>
-                <span class="text-[10px] text-zinc-600 font-mono">${activeItems.length} Seeds</span>
+                <span class="text-[9px] text-muted/50 font-mono tracking-widest">${activeItems.length} SEEDS</span>
             </div>
-            <div class="grid grid-cols-1 gap-3">
+            <div class="grid grid-cols-1 gap-4">
                 ${activeItems.length > 0 ? activeItems.map(item => `
-                    <div class="glass p-4 rounded-xl flex items-center justify-between group">
+                    <div class="glass p-5 rounded-2xl flex items-center justify-between group border border-white/5 wisdom-card">
                         <div class="flex-1 min-w-0">
                             <h4 class="text-sm font-medium text-zinc-300 truncate">${item.seed ? item.seed.essence : item.raw}</h4>
-                            <div class="flex items-center gap-2 mt-1">
-                                <div class="w-12 h-1 bg-zinc-900 rounded-full overflow-hidden">
-                                    <div class="h-full bg-accent" style="width: ${item.soil.strength * 100}%"></div>
+                            <div class="flex items-center gap-3 mt-2">
+                                <div class="w-16 h-[1px] bg-white/5 rounded-full overflow-hidden">
+                                    <div class="h-full bg-accent/40" style="width: ${item.soil.strength * 100}%"></div>
                                 </div>
-                                <span class="text-[8px] text-zinc-600 uppercase tracking-tighter">${item.seed ? 'Distilled' : 'Raw'}</span>
+                                <span class="text-[8px] text-muted uppercase tracking-[0.1em]">${item.seed ? 'Distilled' : 'Raw'}</span>
                             </div>
                         </div>
-                        <button onclick="buryItem('${item.id}')" class="opacity-0 group-hover:opacity-100 p-2 text-zinc-600 hover:text-red-500 transition-all">
+                        <button onclick="buryItem('${item.id}')" class="opacity-0 group-hover:opacity-100 p-3 text-muted hover:text-red-500 transition-all">
                             <i data-lucide="archive" class="w-4 h-4"></i>
                         </button>
                     </div>
                 `).join('') : `
-                    <p class="text-center py-10 text-zinc-700 text-sm">The soil is empty. Drop a seed above.</p>
+                    <p class="text-center py-16 text-muted/30 text-[10px] uppercase tracking-[0.2em]">The soil is quiet</p>
                 `}
             </div>
-            <button onclick="setView('buried')" class="w-full mt-8 text-[10px] uppercase tracking-widest text-zinc-600 hover:text-zinc-400 transition-colors">View Buried Knowledge</button>
+            <button onclick="setView('buried')" class="w-full mt-12 text-[9px] uppercase tracking-[0.3em] text-muted/40 hover:text-accent transition-all">View Buried Knowledge</button>
         </section>
     `;
     lucide.createIcons();
@@ -261,12 +259,11 @@ async function processPulse() {
     if (state.isProcessing) return;
 
     state.isProcessing = true;
-    showToast('Pulse Started...');
+    showToast('Pulse Started');
 
     const unpro = state.items.filter(i => !i.seed);
     const active = state.items.filter(i => i.soil.status === 'active' && i.seed);
 
-    // 1. Distill new seeds
     for (const item of unpro) {
         try {
             const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -287,7 +284,6 @@ async function processPulse() {
         } catch (e) { console.error(e); }
     }
 
-    // 2. Detect Gaps & Connections
     if (active.length > 2) {
         try {
             const context = active.map(i => i.seed.essence).join('\n');
@@ -320,7 +316,7 @@ function interact(id, success) {
     if (!item) return;
 
     if (success) {
-        item.soil.strength = 1.0; // Reset to full strength
+        item.soil.strength = 1.0;
         item.soil.lastSeen = Date.now();
         showToast('Wisdom Strengthened');
     } else {
@@ -340,8 +336,6 @@ function buryItem(id) {
         showToast('Archived');
     }
 }
-
-// --- UI Helpers ---
 
 function toggleSettings() {
     const modal = document.getElementById('settings-modal');
@@ -373,18 +367,18 @@ function renderBuried() {
     const main = document.getElementById('main-view');
     const buried = state.items.filter(i => i.soil.status === 'buried');
     main.innerHTML = `
-        <header class="flex justify-between items-center mb-10 safe-top">
-            <button onclick="renderDashboard()" class="text-zinc-500 hover:text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
-            <h1 class="text-xl font-semibold outfit">Buried Knowledge</h1>
-            <div class="w-6"></div>
+        <header class="flex justify-between items-center mb-16 safe-top">
+            <button onclick="renderDashboard()" class="p-3 glass rounded-2xl text-muted hover:text-white transition-all"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+            <h1 class="text-xl font-medium tracking-tight">Buried Knowledge</h1>
+            <div class="w-12"></div>
         </header>
         <div class="flex flex-col gap-4">
             ${buried.length > 0 ? buried.map(i => `
-                <div class="glass p-5 rounded-2xl group relative">
-                    <h3 class="text-sm font-medium text-zinc-300 mb-2">${i.seed ? i.seed.essence : i.raw.substring(0, 50)}</h3>
-                    <button onclick="unbury('${i.id}')" class="text-[10px] uppercase tracking-widest text-accent font-bold opacity-0 group-hover:opacity-100 transition-all">Resurrect</button>
+                <div class="glass p-6 rounded-2xl group relative border border-white/5 wisdom-card">
+                    <h3 class="text-sm font-medium text-zinc-300 mb-4 leading-relaxed">${i.seed ? i.seed.essence : i.raw.substring(0, 100)}</h3>
+                    <button onclick="unbury('${i.id}')" class="text-[9px] uppercase tracking-[0.2em] text-accent font-bold opacity-0 group-hover:opacity-100 transition-all">Resurrect</button>
                 </div>
-            `).join('') : '<p class="text-center py-20 text-zinc-600">The soil is empty.</p>'}
+            `).join('') : '<p class="text-center py-20 text-muted/30 text-[10px] uppercase tracking-[0.2em]">The soil is empty</p>'}
         </div>
     `;
     lucide.createIcons();

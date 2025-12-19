@@ -1,10 +1,10 @@
 /* Base Layout & Serious Aesthetics */
 :root {
-    --bg: #0f0e0d;
-    --surface: #1c1a18;
-    --accent: #b5a48b;
+    --bg: #1c1b19;
+    --surface: #2a2826;
+    --accent: #c5b49a;
     --text: #e5e2dd;
-    --muted: #8c857d;
+    --muted: #a39c94;
 }
 
 body {
@@ -17,9 +17,19 @@ body {
     overflow-x: hidden;
     /* Circular Gradient Background */
     background-image:
-        radial-gradient(circle at 50% -20%, rgba(181, 164, 139, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 0% 100%, rgba(181, 164, 139, 0.03) 0%, transparent 40%);
+        radial-gradient(circle at 50% -20%, rgba(197, 180, 154, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 0% 100%, rgba(197, 180, 154, 0.05) 0%, transparent 40%);
     background-attachment: fixed;
+}
+
+/* Hide Scrollbar */
+::-webkit-scrollbar {
+    display: none;
+}
+
+* {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* RTL Support */
@@ -27,18 +37,13 @@ body {
     text-align: right;
 }
 
-/* Glassmorphism - Darker & More Serious */
+/* Glassmorphism - Slightly Lighter */
 .glass {
-    background: rgba(28, 26, 24, 0.6);
+    background: rgba(42, 40, 38, 0.6);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.03);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-}
-
-/* Circular Gradient Elements */
-.circular-gradient {
-    background: radial-gradient(circle at center, var(--accent) 0%, transparent 70%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
 }
 
 /* Typography */
@@ -47,25 +52,7 @@ h2,
 h3,
 .outfit {
     font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;
-    letter-spacing: -0.02em;
-}
-
-.tracking-serious {
-    letter-spacing: 0.2em;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-    width: 3px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(181, 164, 139, 0.1);
-    border-radius: 10px;
+    letter-spacing: -0.01em;
 }
 
 /* Animations */
@@ -85,17 +72,17 @@ h3,
     animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Strength Bar - Muted & Serious */
+/* Strength Bar */
 .strength-bar {
     height: 1px;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.05);
     overflow: hidden;
 }
 
 .strength-fill {
     height: 100%;
     background: var(--accent);
-    opacity: 0.6;
+    opacity: 0.8;
     transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -110,7 +97,7 @@ input {
 
 textarea::placeholder {
     color: var(--muted);
-    opacity: 0.4;
+    opacity: 0.5;
 }
 
 /* PWA Safe Area */
@@ -126,6 +113,6 @@ textarea::placeholder {
 }
 
 .wisdom-card:hover {
-    background: rgba(181, 164, 139, 0.03);
-    border-color: rgba(181, 164, 139, 0.1);
+    background: rgba(197, 180, 154, 0.05);
+    border-color: rgba(197, 180, 154, 0.15);
 }

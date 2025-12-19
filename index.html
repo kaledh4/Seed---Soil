@@ -7,7 +7,7 @@
     <title>Seed & Soil</title>
     <meta name="description" content="Turn passive consumption into active wisdom.">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f0e0d">
+    <meta name="theme-color" content="#1c1b19">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -18,10 +18,10 @@
             theme: {
                 extend: {
                     colors: {
-                        dark: '#0f0e0d',
-                        card: '#1c1a18',
-                        accent: '#b5a48b',
-                        muted: '#8c857d'
+                        dark: '#1c1b19',
+                        card: '#2a2826',
+                        accent: '#c5b49a',
+                        muted: '#a39c94'
                     },
                     fontFamily: {
                         sans: ['"IBM Plex Sans"', '"IBM Plex Sans Arabic"', 'sans-serif'],
@@ -32,6 +32,10 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Processing Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/tesseract.js@v5.0.3/dist/tesseract.min.js"></script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -41,11 +45,19 @@
 </head>
 
 <body class="dark flex justify-center min-h-screen">
+    <div id="drop-zone"
+        class="fixed inset-0 z-[300] bg-accent/10 backdrop-blur-sm border-4 border-dashed border-accent/30 pointer-events-none opacity-0 transition-opacity flex items-center justify-center">
+        <div class="text-center">
+            <i data-lucide="upload-cloud" class="w-16 h-16 text-accent mx-auto mb-4"></i>
+            <p class="text-xl font-medium text-accent uppercase tracking-widest">Drop to plant wisdom</p>
+        </div>
+    </div>
+
     <main id="main-view" class="w-full max-w-2xl h-full flex flex-col items-center justify-center"></main>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6">
-        <div class="absolute inset-0 bg-black/95 backdrop-blur-xl" onclick="toggleSettings()"></div>
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-xl" onclick="toggleSettings()"></div>
         <div class="glass w-full max-w-xs p-8 rounded-[2rem] relative animate-fade-in border border-white/5">
             <h2 class="text-xl font-medium mb-8 tracking-tight">Settings</h2>
             <div class="space-y-6">

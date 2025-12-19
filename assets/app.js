@@ -36,6 +36,8 @@ function init() {
         document.getElementById('save-settings-btn').classList.add('hidden');
     }
 
+    setupDragAndDrop();
+
     if (state.settings.password) {
         renderLockScreen();
     } else {
@@ -83,6 +85,76 @@ function applyDecay() {
     if (changed) saveData();
 }
 
+// --- Drag and Drop Logic ---
+
+function setupDragAndDrop() {
+    const zone = document.getElementById('drop-zone');
+
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.remove('opacity-0', 'pointer-events-none');
+        zone.classList.add('opacity-100');
+    });
+
+    window.addEventListener('dragleave', (e) => {
+        if (e.relatedTarget === null) {
+            zone.classList.add('opacity-0', 'pointer-events-none');
+            zone.classList.remove('opacity-100');
+        }
+    });
+
+    window.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        zone.classList.add('opacity-0', 'pointer-events-none');
+        zone.classList.remove('opacity-100');
+
+        const files = Array.from(e.dataTransfer.files);
+        const text = e.dataTransfer.getData('text');
+
+        if (files.length > 0) {
+            for (const file of files) {
+                await handleFile(file);
+            }
+        } else if (text) {
+            captureSeed(text);
+        }
+    });
+}
+
+async function handleFile(file) {
+    showToast(`Processing ${file.name}...`);
+
+    if (file.type === 'application/pdf') {
+        const text = await extractPdfText(file);
+        captureSeed(text);
+    } else if (file.type.startsWith('image/')) {
+        const text = await extractImageText(file);
+        captureSeed(text);
+    } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        const text = await file.text();
+        captureSeed(text);
+    } else {
+        showToast('Unsupported file type');
+    }
+}
+
+async function extractPdfText(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        fullText += content.items.map(item => item.str).join(' ') + '\n';
+    }
+    return fullText;
+}
+
+async function extractImageText(file) {
+    const result = await Tesseract.recognize(file, 'eng+ara');
+    return result.data.text;
+}
+
 // --- UI Rendering ---
 
 function renderLockScreen() {
@@ -122,7 +194,6 @@ function renderDashboard() {
     const triageItems = activeItems.filter(i => i.seed).slice(0, 3);
 
     main.innerHTML = `
-        <!-- Header -->
         <header class="flex justify-between items-center mb-16 safe-top">
             <h1 class="text-xl font-medium tracking-tight">Seed & Soil</h1>
             <div class="flex gap-4">
@@ -135,7 +206,6 @@ function renderDashboard() {
             </div>
         </header>
 
-        <!-- Knowledge Gaps -->
         <section class="mb-16">
             <div class="flex items-center gap-3 mb-6">
                 <div class="w-1 h-1 rounded-full bg-accent"></div>
@@ -154,21 +224,19 @@ function renderDashboard() {
             </div>
         </section>
 
-        <!-- The Void -->
         <section class="mb-16">
             <div class="glass rounded-[2.5rem] p-8 relative group border border-white/5">
                 <textarea id="capture-input" 
                     class="w-full bg-transparent text-lg focus:outline-none resize-none h-32 leading-relaxed" 
-                    placeholder="Drop a seed..."
+                    placeholder="Drop a seed or file..."
                     onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter') captureSeed()"></textarea>
                 <div class="flex justify-between items-center mt-6">
-                    <span class="text-[9px] text-muted uppercase tracking-[0.2em] opacity-40">Cmd + Enter</span>
+                    <span class="text-[9px] text-muted uppercase tracking-[0.2em] opacity-40">Drop files or Cmd+Enter</span>
                     <button onclick="captureSeed()" class="bg-accent text-dark px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] hover:brightness-110 transition-all">Capture</button>
                 </div>
             </div>
         </section>
 
-        <!-- Triage -->
         ${triageItems.length > 0 ? `
         <section class="mb-16">
             <div class="flex items-center gap-3 mb-6">
@@ -193,7 +261,6 @@ function renderDashboard() {
         </section>
         ` : ''}
 
-        <!-- Active Wisdom -->
         <section class="mb-24">
             <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-3">
@@ -230,9 +297,9 @@ function renderDashboard() {
 
 // --- Actions ---
 
-function captureSeed() {
+function captureSeed(manualText) {
     const input = document.getElementById('capture-input');
-    const text = input.value.trim();
+    const text = manualText || input.value.trim();
     if (!text) return;
 
     const newItem = {
@@ -249,7 +316,7 @@ function captureSeed() {
 
     state.items.unshift(newItem);
     saveData();
-    input.value = '';
+    if (!manualText) input.value = '';
     showToast('Seed Captured');
     renderDashboard();
 }

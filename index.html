@@ -11,7 +11,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- External Styles & Config -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -33,60 +32,49 @@
     <link rel="stylesheet" href="assets/styles.css">
 </head>
 
-<body class="dark">
-    <div id="app" class="h-full w-full flex flex-col items-center justify-center p-6 relative">
-        <!-- Settings Trigger -->
-        <button id="settings-trigger" onclick="toggleSettings()"
-            class="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-colors z-50 hidden">
-            <i data-lucide="settings" class="w-5 h-5"></i>
-        </button>
+<body class="dark flex justify-center">
+    <main id="main-view" class="w-full max-w-2xl h-full flex flex-col items-center justify-center"></main>
 
-        <!-- Main View Container -->
-        <main id="main-view" class="w-full max-w-md h-full flex flex-col items-center justify-center"></main>
-
-        <!-- Settings Modal -->
-        <div id="settings-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6">
-            <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="toggleSettings()"></div>
-            <div class="glass w-full max-w-xs p-6 rounded-3xl relative animate-fade-in">
-                <h2 class="text-xl font-semibold mb-4 outfit">Settings</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label class="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">OpenRouter API
-                            Key</label>
-                        <input type="password" id="api-key" placeholder="sk-or-..."
-                            class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:border-accent outline-none transition-all">
-                    </div>
-                    <div>
-                        <label class="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">App Password</label>
-                        <input type="password" id="app-password" placeholder="Optional lock"
-                            class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:border-accent outline-none transition-all">
-                    </div>
-                    <button onclick="saveSettings()"
-                        class="w-full bg-accent text-white py-2 rounded-xl font-medium hover:bg-blue-600 transition-colors">Save
-                        Changes</button>
-                    <button onclick="setView('buried')"
-                        class="w-full bg-zinc-800 text-zinc-300 py-2 rounded-xl font-medium hover:bg-zinc-700 transition-colors text-sm">View
-                        Buried Knowledge</button>
-                    <button onclick="logout()" id="logout-btn"
-                        class="w-full bg-zinc-900 text-zinc-400 py-2 rounded-xl font-medium hover:bg-zinc-800 transition-colors text-sm hidden">Lock
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="toggleSettings()"></div>
+        <div class="glass w-full max-w-xs p-6 rounded-3xl relative animate-fade-in">
+            <h2 class="text-xl font-semibold mb-6 outfit">Settings</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">OpenRouter API
+                        Key</label>
+                    <input type="password" id="api-key" placeholder="sk-or-..."
+                        class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:border-accent outline-none transition-all">
+                </div>
+                <div>
+                    <label class="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">App Password</label>
+                    <input type="password" id="app-password" placeholder="Optional lock"
+                        class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:border-accent outline-none transition-all">
+                </div>
+                <button onclick="saveSettings()"
+                    class="w-full bg-accent text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-600 transition-colors">Save
+                    Changes</button>
+                <div class="pt-4 border-t border-zinc-800 space-y-2">
+                    <button onclick="logout()"
+                        class="w-full text-zinc-500 py-2 text-[10px] uppercase tracking-widest hover:text-white transition-colors">Lock
                         App</button>
                     <button onclick="exportData()"
-                        class="w-full text-zinc-500 py-2 text-xs hover:text-zinc-300 transition-colors">Export
-                        Data</button>
+                        class="w-full text-zinc-500 py-2 text-[10px] uppercase tracking-widest hover:text-white transition-colors">Export
+                        JSON</button>
                     <button onclick="clearAllData()"
-                        class="w-full text-red-500/50 py-2 text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors">Clear
+                        class="w-full text-red-500/50 py-2 text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors">Wipe
                         All Data</button>
                 </div>
             </div>
         </div>
-
-        <!-- Toast Notification -->
-        <div id="toast"
-            class="fixed bottom-10 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-medium opacity-0 pointer-events-none transition-all duration-300 z-[200]">
-        </div>
     </div>
 
-    <!-- Core Logic -->
+    <!-- Toast Notification -->
+    <div id="toast"
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest opacity-0 pointer-events-none transition-all duration-300 z-[200] text-accent">
+    </div>
+
     <script src="assets/app.js"></script>
 </body>
 

@@ -1,7 +1,6 @@
 const STORAGE_KEY = 'seed_soil_data';
 const SETTINGS_KEY = 'seed_soil_settings';
 
-// SINGLE USER CONFIG: This can be replaced by GitHub Actions during deployment
 const DEPLOYED_CONFIG = {
     apiKey: 'OPENROUTER_API_KEY_PLACEHOLDER',
     password: 'APP_PASSWORD_PLACEHOLDER'
@@ -9,16 +8,20 @@ const DEPLOYED_CONFIG = {
 
 let state = {
     items: [],
+    gaps: [], // Daily suggestions/gaps
     settings: {
         apiKey: DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER' ? DEPLOYED_CONFIG.apiKey : '',
         password: DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER' ? DEPLOYED_CONFIG.password : ''
     },
-    currentView: 'void',
-    isAuthenticated: false
+    isAuthenticated: false,
+    isProcessing: false
 };
+
+// --- Core Logic ---
 
 function init() {
     loadData();
+    // Secrets override
     if (DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER') state.settings.apiKey = DEPLOYED_CONFIG.apiKey;
     if (DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER') state.settings.password = DEPLOYED_CONFIG.password;
 
@@ -26,37 +29,29 @@ function init() {
         renderLockScreen();
     } else {
         state.isAuthenticated = true;
-        document.getElementById('settings-trigger').classList.remove('hidden');
         applyDecay();
-        render();
+        renderDashboard();
     }
-    lucide.createIcons();
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 }
 
 function loadData() {
     const d = localStorage.getItem(STORAGE_KEY);
-    if (d) state.items = JSON.parse(d);
+    if (d) {
+        const parsed = JSON.parse(d);
+        state.items = parsed.items || [];
+        state.gaps = parsed.gaps || [];
+    }
     const s = localStorage.getItem(SETTINGS_KEY);
     if (s) {
         const saved = JSON.parse(s);
         state.settings.apiKey = state.settings.apiKey || saved.apiKey || '';
         state.settings.password = state.settings.password || saved.password || '';
-        document.getElementById('api-key').value = state.settings.apiKey;
-        document.getElementById('app-password').value = state.settings.password;
-        if (state.settings.password) document.getElementById('logout-btn').classList.remove('hidden');
     }
 }
 
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items)); }
-function saveSettings() {
-    state.settings.apiKey = document.getElementById('api-key').value;
-    state.settings.password = document.getElementById('app-password').value;
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
-    if (state.settings.password) document.getElementById('logout-btn').classList.remove('hidden');
-    else document.getElementById('logout-btn').classList.add('hidden');
-    toggleSettings();
-    showToast('Settings saved');
+function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items, gaps: state.gaps }));
 }
 
 function applyDecay() {
@@ -77,151 +72,199 @@ function applyDecay() {
     if (changed) saveData();
 }
 
-function render() {
-    const m = document.getElementById('main-view');
-    m.innerHTML = '';
-    if (state.currentView === 'void') renderVoid(m);
-    else if (state.currentView === 'challenge') renderChallenge(m);
-    else if (state.currentView === 'pulse') renderPulse(m);
-    else if (state.currentView === 'buried') renderBuried(m);
-    lucide.createIcons();
-}
+// --- UI Rendering ---
 
 function renderLockScreen() {
-    document.getElementById('settings-trigger').classList.add('hidden');
-    document.getElementById('main-view').innerHTML = `
-        <div class="w-full flex flex-col items-center animate-fade-in">
-            <div class="mb-12 text-center">
-                <div class="w-16 h-16 glass rounded-full flex items-center justify-center mx-auto mb-6"><i data-lucide="lock" class="w-6 h-6 text-accent"></i></div>
-                <h1 class="text-2xl font-light outfit mb-2">Seed & Soil</h1>
-                <p class="text-zinc-500 text-sm">Enter password to unlock</p>
+    const main = document.getElementById('main-view');
+    main.innerHTML = `
+        <div class="w-full max-w-xs animate-fade-in flex flex-col items-center">
+            <div class="w-20 h-20 glass rounded-full flex items-center justify-center mb-8">
+                <i data-lucide="shield-check" class="w-8 h-8 text-accent"></i>
             </div>
-            <div class="w-full max-w-xs">
-                <input type="password" id="lock-input" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-center outfit focus:border-accent outline-none transition-all" placeholder="••••••••" onkeydown="if(event.key==='Enter') unlock()">
-                <button onclick="unlock()" class="w-full mt-4 bg-white text-black py-4 rounded-2xl font-bold outfit hover:bg-zinc-200 transition-all">Unlock</button>
-            </div>
+            <h1 class="text-3xl font-light outfit mb-8">Seed & Soil</h1>
+            <input type="password" id="lock-input" 
+                class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-center outfit focus:border-accent outline-none transition-all" 
+                placeholder="Password" 
+                onkeydown="if(event.key==='Enter') unlock()">
+            <button onclick="unlock()" class="w-full mt-4 bg-white text-black py-4 rounded-2xl font-bold outfit hover:bg-zinc-200 transition-all">Unlock</button>
         </div>`;
     lucide.createIcons();
     document.getElementById('lock-input').focus();
 }
 
 function unlock() {
-    if (document.getElementById('lock-input').value === state.settings.password) {
+    const val = document.getElementById('lock-input').value;
+    if (val === state.settings.password) {
         state.isAuthenticated = true;
-        document.getElementById('settings-trigger').classList.remove('hidden');
         applyDecay();
-        render();
+        renderDashboard();
     } else {
-        showToast('Incorrect password');
+        showToast('Access Denied');
     }
 }
 
-function logout() { state.isAuthenticated = false; toggleSettings(); renderLockScreen(); }
+function renderDashboard() {
+    const main = document.getElementById('main-view');
+    main.className = "w-full max-w-2xl h-full flex flex-col p-4 overflow-y-auto";
 
-function renderVoid(c) {
-    c.innerHTML = `
-        <div class="w-full flex flex-col items-center animate-fade-in">
-            <div class="mb-12 text-center">
-                <h1 class="text-4xl font-light outfit mb-2">The Void</h1>
-                <p class="text-zinc-500 text-sm">What did you learn today?</p>
-            </div>
-            <textarea id="capture-input" class="w-full bg-transparent border-b border-zinc-800 py-4 text-lg outfit focus:border-accent outline-none transition-all resize-none h-32 text-center" placeholder="Drop a seed..." onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter') captureSeed()"></textarea>
-            <div class="mt-12 flex gap-6">
-                <button onclick="setView('challenge')" class="flex flex-col items-center gap-2 group">
-                    <div class="w-12 h-12 rounded-full glass flex items-center justify-center group-hover:bg-accent/10 transition-colors"><i data-lucide="flame" class="w-5 h-5 text-zinc-400 group-hover:text-accent"></i></div>
-                    <span class="text-[10px] uppercase tracking-widest text-zinc-500">Triage</span>
-                </button>
-                <button onclick="processPulse()" class="flex flex-col items-center gap-2 group">
-                    <div class="w-12 h-12 rounded-full glass flex items-center justify-center group-hover:bg-accent/10 transition-colors"><i data-lucide="zap" class="w-5 h-5 text-zinc-400 group-hover:text-accent"></i></div>
-                    <span class="text-[10px] uppercase tracking-widest text-zinc-500">Pulse</span>
-                </button>
-            </div>
-        </div>`;
-    document.getElementById('capture-input').focus();
-}
+    const activeItems = state.items.filter(i => i.soil.status === 'active');
+    const triageItems = activeItems.filter(i => i.seed).slice(0, 3);
 
-function renderChallenge(c) {
-    const active = state.items.filter(i => i.soil.status === 'active' && i.seed).sort((a, b) => b.soil.strength - a.soil.strength);
-    const s = active[0];
-    if (!s) {
-        c.innerHTML = `<div class="text-center animate-fade-in"><i data-lucide="wind" class="w-12 h-12 text-zinc-800 mx-auto mb-4"></i><h2 class="text-xl outfit text-zinc-400">The soil is quiet.</h2><button onclick="setView('void')" class="mt-8 text-accent text-sm font-medium">Return to Void</button></div>`;
-        return;
-    }
-    c.innerHTML = `
-        <div class="w-full flex flex-col h-full animate-fade-in">
-            <div class="flex justify-between items-center mb-8">
-                <button onclick="setView('void')" class="text-zinc-500 hover:text-white transition-colors"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
-                <div class="flex items-center gap-2"><div class="h-1 w-24 bg-zinc-900 rounded-full overflow-hidden"><div class="h-full bg-accent transition-all duration-500" style="width: ${s.soil.strength * 100}%"></div></div><span class="text-[10px] text-zinc-500 font-mono">${Math.round(s.soil.strength * 100)}%</span></div>
+    main.innerHTML = `
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-10 safe-top">
+            <h1 class="text-xl font-semibold outfit tracking-tight">Seed & Soil</h1>
+            <div class="flex gap-3">
+                <button onclick="processPulse()" class="p-2 glass rounded-xl text-accent hover:bg-accent/10 transition-colors">
+                    <i data-lucide="zap" class="w-5 h-5"></i>
+                </button>
+                <button onclick="toggleSettings()" class="p-2 glass rounded-xl text-zinc-500 hover:text-white transition-colors">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
             </div>
-            <div class="flex-1 flex flex-col justify-center">
-                <div class="glass p-8 rounded-[2rem] relative overflow-hidden">
-                    <h2 class="text-2xl outfit font-semibold mb-6 leading-tight">${s.seed.essence}</h2>
-                    <div class="space-y-4 mb-8">${s.seed.nuggets.map(n => `<div class="flex gap-3"><div class="w-1 h-1 rounded-full bg-accent mt-2 shrink-0"></div><p class="text-zinc-400 text-sm leading-relaxed">${n}</p></div>`).join('')}</div>
-                    <div class="bg-accent/5 border border-accent/10 p-5 rounded-2xl"><span class="text-[10px] uppercase tracking-widest text-accent font-bold mb-2 block">The Challenge</span><p class="text-zinc-200 text-sm italic">"${s.seed.action}"</p></div>
+        </header>
+
+        <!-- Knowledge Gaps / Daily Suggestions -->
+        <section class="mb-12">
+            <div class="flex items-center gap-2 mb-4">
+                <i data-lucide="sparkles" class="w-4 h-4 text-accent"></i>
+                <h2 class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Daily Wisdom & Gaps</h2>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                ${state.gaps.length > 0 ? state.gaps.map(gap => `
+                    <div class="glass p-5 rounded-2xl border-l-2 border-accent/30">
+                        <p class="text-sm text-zinc-300 leading-relaxed">${gap}</p>
+                    </div>
+                `).join('') : `
+                    <div class="glass p-8 rounded-2xl text-center border-dashed border-zinc-800">
+                        <p class="text-xs text-zinc-600">No gaps detected. Run Pulse to analyze your soil.</p>
+                    </div>
+                `}
+            </div>
+        </section>
+
+        <!-- The Void (Capture) -->
+        <section class="mb-12">
+            <div class="glass rounded-3xl p-6 relative group">
+                <textarea id="capture-input" 
+                    class="w-full bg-transparent text-lg outfit focus:outline-none resize-none h-24" 
+                    placeholder="What did you learn today?"
+                    onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter') captureSeed()"></textarea>
+                <div class="flex justify-between items-center mt-4">
+                    <span class="text-[10px] text-zinc-600 uppercase tracking-widest">Cmd + Enter to save</span>
+                    <button onclick="captureSeed()" class="bg-white text-black px-4 py-2 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-all">Save Seed</button>
                 </div>
             </div>
-            <div class="mt-12 grid grid-cols-2 gap-4">
-                <button onclick="interact('${s.id}', false)" class="glass py-4 rounded-2xl text-zinc-500 hover:text-red-400 transition-all flex flex-col items-center gap-1"><i data-lucide="trash-2" class="w-5 h-5"></i><span class="text-[10px] uppercase tracking-widest">Bury</span></button>
-                <button onclick="interact('${s.id}', true)" class="bg-white text-black py-4 rounded-2xl hover:bg-zinc-200 transition-all flex flex-col items-center gap-1"><i data-lucide="check" class="w-5 h-5"></i><span class="text-[10px] uppercase tracking-widest font-bold">I did this</span></button>
-            </div>
-        </div>`;
-}
+        </section>
 
-function renderPulse(c) {
-    c.innerHTML = `<div class="text-center animate-fade-in"><div class="relative w-24 h-24 mx-auto mb-8"><div class="absolute inset-0 bg-accent/20 rounded-full animate-ping"></div><div class="relative w-full h-full glass rounded-full flex items-center justify-center"><i data-lucide="zap" class="w-8 h-8 text-accent"></i></div></div><h2 class="text-xl outfit mb-2">The Pulse</h2><p class="text-zinc-500 text-sm">Extracting DNA...</p></div>`;
-}
-
-function renderBuried(c) {
-    const buried = state.items.filter(i => i.soil.status === 'buried');
-    c.innerHTML = `
-        <div class="w-full flex flex-col h-full animate-fade-in">
-            <div class="flex justify-between items-center mb-8">
-                <button onclick="setView('void')" class="text-zinc-500 hover:text-white transition-colors"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
-                <h2 class="text-lg outfit font-medium text-zinc-400">Buried Knowledge</h2>
-                <div class="w-5"></div>
+        <!-- Triage (Review) -->
+        ${triageItems.length > 0 ? `
+        <section class="mb-12">
+            <div class="flex items-center gap-2 mb-4">
+                <i data-lucide="trello" class="w-4 h-4 text-accent"></i>
+                <h2 class="text-xs uppercase tracking-widest text-zinc-500 font-bold">The Triage</h2>
             </div>
-            <div class="flex-1 overflow-y-auto space-y-4 pb-12">
-                ${buried.length === 0 ? `<div class="text-center py-20 text-zinc-600"><p>The soil is empty.</p></div>` : buried.map(i => `
-                    <div class="glass p-6 rounded-2xl relative group">
-                        <div class="flex justify-between items-start mb-3">
-                            <span class="text-[10px] uppercase tracking-widest text-zinc-600">Buried Seed</span>
-                            <button onclick="unbury('${i.id}')" class="text-accent text-[10px] uppercase tracking-widest font-bold opacity-0 group-hover:opacity-100 transition-opacity">Resurrect</button>
+            <div class="flex flex-col gap-4">
+                ${triageItems.map(item => `
+                    <div class="glass p-6 rounded-2xl animate-fade-in relative overflow-hidden">
+                        <div class="strength-bar absolute top-0 left-0 w-full">
+                            <div class="strength-fill" style="width: ${item.soil.strength * 100}%"></div>
                         </div>
-                        <h3 class="text-sm font-medium text-zinc-300 mb-2">${i.seed ? i.seed.essence : i.raw.substring(0, 50) + '...'}</h3>
-                        <p class="text-xs text-zinc-500 italic">"${i.raw.substring(0, 100)}${i.raw.length > 100 ? '...' : ''}"</p>
+                        <h3 class="text-lg outfit font-medium mb-3 mt-2">${item.seed.essence}</h3>
+                        <p class="text-sm text-zinc-400 italic mb-6">"${item.seed.action}"</p>
+                        <div class="flex gap-3">
+                            <button onclick="interact('${item.id}', true)" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-xs font-bold transition-all">I DID THIS</button>
+                            <button onclick="interact('${item.id}', false)" class="px-4 glass text-zinc-500 hover:text-red-400 rounded-xl transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
                     </div>
                 `).join('')}
             </div>
-        </div>`;
+        </section>
+        ` : ''}
+
+        <!-- Active Wisdom (The Past) -->
+        <section class="mb-20">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4 text-zinc-500"></i>
+                    <h2 class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Active Wisdom</h2>
+                </div>
+                <span class="text-[10px] text-zinc-600 font-mono">${activeItems.length} Seeds</span>
+            </div>
+            <div class="grid grid-cols-1 gap-3">
+                ${activeItems.length > 0 ? activeItems.map(item => `
+                    <div class="glass p-4 rounded-xl flex items-center justify-between group">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-medium text-zinc-300 truncate">${item.seed ? item.seed.essence : item.raw}</h4>
+                            <div class="flex items-center gap-2 mt-1">
+                                <div class="w-12 h-1 bg-zinc-900 rounded-full overflow-hidden">
+                                    <div class="h-full bg-accent" style="width: ${item.soil.strength * 100}%"></div>
+                                </div>
+                                <span class="text-[8px] text-zinc-600 uppercase tracking-tighter">${item.seed ? 'Distilled' : 'Raw'}</span>
+                            </div>
+                        </div>
+                        <button onclick="buryItem('${item.id}')" class="opacity-0 group-hover:opacity-100 p-2 text-zinc-600 hover:text-red-500 transition-all">
+                            <i data-lucide="archive" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `).join('') : `
+                    <p class="text-center py-10 text-zinc-700 text-sm">The soil is empty. Drop a seed above.</p>
+                `}
+            </div>
+            <button onclick="setView('buried')" class="w-full mt-8 text-[10px] uppercase tracking-widest text-zinc-600 hover:text-zinc-400 transition-colors">View Buried Knowledge</button>
+        </section>
+    `;
+    lucide.createIcons();
 }
 
-function unbury(id) {
-    const i = state.items.find(x => x.id === id);
-    if (i) { i.soil.status = 'active'; i.soil.strength = 0.5; i.soil.lastSeen = Date.now(); saveData(); render(); showToast('Seed resurrected'); }
-}
+// --- Actions ---
 
-function setView(v) { state.currentView = v; document.getElementById('settings-modal').classList.add('hidden'); render(); }
 function captureSeed() {
-    const i = document.getElementById('capture-input');
-    const t = i.value.trim();
-    if (!t) return;
-    state.items.unshift({ id: Math.random().toString(36).substr(2, 9), raw: t, seed: null, soil: { strength: 1.0, lastSeen: Date.now(), nextReview: Date.now() + 86400000, status: 'active' } });
-    saveData(); i.value = ''; showToast('Seed captured');
+    const input = document.getElementById('capture-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const newItem = {
+        id: Math.random().toString(36).substr(2, 9),
+        raw: text,
+        seed: null,
+        soil: {
+            strength: 1.0,
+            lastSeen: Date.now(),
+            nextReview: Date.now() + 86400000,
+            status: 'active'
+        }
+    };
+
+    state.items.unshift(newItem);
+    saveData();
+    input.value = '';
+    showToast('Seed Captured');
+    renderDashboard();
 }
 
 async function processPulse() {
-    if (!state.settings.apiKey) { showToast('API Key required'); toggleSettings(); return; }
-    const un = state.items.filter(i => !i.seed);
-    if (un.length === 0) { showToast('No new seeds'); return; }
-    setView('pulse');
-    for (const item of un) {
+    if (!state.settings.apiKey) { showToast('API Key Required'); toggleSettings(); return; }
+    if (state.isProcessing) return;
+
+    state.isProcessing = true;
+    showToast('Pulse Started...');
+
+    const unpro = state.items.filter(i => !i.seed);
+    const active = state.items.filter(i => i.soil.status === 'active' && i.seed);
+
+    // 1. Distill new seeds
+    for (const item of unpro) {
         try {
             const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.settings.apiKey}`, 'HTTP-Referer': 'https://seed-soil.app', 'X-Title': 'Seed & Soil' },
                 body: JSON.stringify({
                     model: 'google/gemini-2.0-flash-exp:free',
-                    messages: [{ role: 'system', content: 'Act as a Socratic Mentor. Extract DNA from text. Return JSON: { "essence": "1 sentence", "nuggets": ["insight1", "insight2"], "action": "1 challenge" }' }, { role: 'user', content: item.raw }],
+                    messages: [
+                        { role: 'system', content: 'Act as a Socratic Mentor. Extract DNA from text. Return JSON: { "essence": "1 sentence", "nuggets": ["insight1", "insight2"], "action": "1 challenge" }' },
+                        { role: 'user', content: item.raw }
+                    ],
                     response_format: { type: 'json_object' }
                 })
             });
@@ -230,27 +273,144 @@ async function processPulse() {
             saveData();
         } catch (e) { console.error(e); }
     }
-    setView('void'); showToast('Pulse complete');
+
+    // 2. Detect Gaps & Connections
+    if (active.length > 2) {
+        try {
+            const context = active.map(i => i.seed.essence).join('\n');
+            const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.settings.apiKey}`, 'HTTP-Referer': 'https://seed-soil.app', 'X-Title': 'Seed & Soil' },
+                body: JSON.stringify({
+                    model: 'google/gemini-2.0-flash-exp:free',
+                    messages: [
+                        { role: 'system', content: 'Analyze these knowledge entries. Identify 2-3 non-obvious knowledge gaps or synthesis connections. Return JSON: { "gaps": ["gap1", "gap2"] }' },
+                        { role: 'user', content: context }
+                    ],
+                    response_format: { type: 'json_object' }
+                })
+            });
+            const d = await r.json();
+            const res = JSON.parse(d.choices[0].message.content);
+            state.gaps = res.gaps;
+            saveData();
+        } catch (e) { console.error(e); }
+    }
+
+    state.isProcessing = false;
+    showToast('Pulse Complete');
+    renderDashboard();
 }
 
-function interact(id, ok) {
-    const i = state.items.find(x => x.id === id);
-    if (ok) { i.soil.strength = Math.min(1, i.soil.strength + 0.2); i.soil.lastSeen = Date.now(); }
-    else i.soil.status = 'buried';
-    saveData(); render();
+function interact(id, success) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+
+    if (success) {
+        item.soil.strength = 1.0; // Reset to full strength
+        item.soil.lastSeen = Date.now();
+        showToast('Wisdom Strengthened');
+    } else {
+        item.soil.status = 'buried';
+        showToast('Seed Buried');
+    }
+    saveData();
+    renderDashboard();
 }
 
-function toggleSettings() { document.getElementById('settings-modal').classList.toggle('hidden'); }
+function buryItem(id) {
+    const item = state.items.find(i => i.id === id);
+    if (item) {
+        item.soil.status = 'buried';
+        saveData();
+        renderDashboard();
+        showToast('Archived');
+    }
+}
+
+// --- UI Helpers ---
+
+function toggleSettings() {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.toggle('hidden');
+}
+
+function logout() {
+    state.isAuthenticated = false;
+    renderLockScreen();
+}
+
 function showToast(m) {
-    const t = document.getElementById('toast'); t.innerText = m;
-    t.classList.remove('opacity-0', 'pointer-events-none'); t.classList.add('opacity-100');
-    setTimeout(() => { t.classList.add('opacity-0', 'pointer-events-none'); t.classList.remove('opacity-100'); }, 3000);
+    const t = document.getElementById('toast');
+    t.innerText = m;
+    t.classList.remove('opacity-0', 'pointer-events-none');
+    t.classList.add('opacity-100');
+    setTimeout(() => {
+        t.classList.add('opacity-0', 'pointer-events-none');
+        t.classList.remove('opacity-100');
+    }, 3000);
 }
+
+function setView(v) {
+    if (v === 'buried') renderBuried();
+    else renderDashboard();
+}
+
+function renderBuried() {
+    const main = document.getElementById('main-view');
+    const buried = state.items.filter(i => i.soil.status === 'buried');
+    main.innerHTML = `
+        <header class="flex justify-between items-center mb-10 safe-top">
+            <button onclick="renderDashboard()" class="text-zinc-500 hover:text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+            <h1 class="text-xl font-semibold outfit">Buried Knowledge</h1>
+            <div class="w-6"></div>
+        </header>
+        <div class="flex flex-col gap-4">
+            ${buried.length > 0 ? buried.map(i => `
+                <div class="glass p-5 rounded-2xl group relative">
+                    <h3 class="text-sm font-medium text-zinc-300 mb-2">${i.seed ? i.seed.essence : i.raw.substring(0, 50)}</h3>
+                    <button onclick="unbury('${i.id}')" class="text-[10px] uppercase tracking-widest text-accent font-bold opacity-0 group-hover:opacity-100 transition-all">Resurrect</button>
+                </div>
+            `).join('') : '<p class="text-center py-20 text-zinc-600">The soil is empty.</p>'}
+        </div>
+    `;
+    lucide.createIcons();
+}
+
+function unbury(id) {
+    const i = state.items.find(x => x.id === id);
+    if (i) {
+        i.soil.status = 'active';
+        i.soil.strength = 0.5;
+        i.soil.lastSeen = Date.now();
+        saveData();
+        renderDashboard();
+        showToast('Resurrected');
+    }
+}
+
+function saveSettings() {
+    state.settings.apiKey = document.getElementById('api-key').value;
+    state.settings.password = document.getElementById('app-password').value;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+    toggleSettings();
+    showToast('Settings Saved');
+}
+
 function exportData() {
     const b = new Blob([JSON.stringify(state.items, null, 2)], { type: 'application/json' });
     const u = URL.createObjectURL(b);
     const a = document.createElement('a'); a.href = u; a.download = 'seed-soil-export.json'; a.click();
 }
-function clearAllData() { if (confirm('Delete all seeds?')) { state.items = []; saveData(); render(); toggleSettings(); } }
+
+function clearAllData() {
+    if (confirm('Delete everything?')) {
+        state.items = [];
+        state.gaps = [];
+        saveData();
+        renderDashboard();
+        toggleSettings();
+    }
+}
 
 init();

@@ -8,14 +8,17 @@ const DEPLOYED_CONFIG = {
     gistId: 'GIST_ID_PLACEHOLDER'
 };
 
+// Helper to check if a value is a real secret and not a placeholder
+const isSecret = (val) => val && !val.includes('PLACEHOLDER') && val.length > 3;
+
 let state = {
     items: [],
     gaps: [],
     settings: {
-        apiKey: DEPLOYED_CONFIG.apiKey && DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER' ? DEPLOYED_CONFIG.apiKey : '',
-        password: DEPLOYED_CONFIG.password && DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER' ? DEPLOYED_CONFIG.password : '',
-        githubToken: DEPLOYED_CONFIG.githubToken && DEPLOYED_CONFIG.githubToken !== 'GITHUB_TOKEN_PLACEHOLDER' ? DEPLOYED_CONFIG.githubToken : '',
-        gistId: DEPLOYED_CONFIG.gistId && DEPLOYED_CONFIG.gistId !== 'GIST_ID_PLACEHOLDER' ? DEPLOYED_CONFIG.gistId : ''
+        apiKey: isSecret(DEPLOYED_CONFIG.apiKey) ? DEPLOYED_CONFIG.apiKey : '',
+        password: isSecret(DEPLOYED_CONFIG.password) ? DEPLOYED_CONFIG.password : '',
+        githubToken: isSecret(DEPLOYED_CONFIG.githubToken) ? DEPLOYED_CONFIG.githubToken : '',
+        gistId: isSecret(DEPLOYED_CONFIG.gistId) ? DEPLOYED_CONFIG.gistId : ''
     },
     isAuthenticated: false,
     isProcessing: false,
@@ -26,31 +29,32 @@ let state = {
 
 function init() {
     loadData();
+
     // Secrets override - DEPLOYED_CONFIG always wins if set
-    const hasHardcodedKey = DEPLOYED_CONFIG.apiKey && DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER';
-    const hasHardcodedPass = DEPLOYED_CONFIG.password && DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER';
-    const hasHardcodedToken = DEPLOYED_CONFIG.githubToken && DEPLOYED_CONFIG.githubToken !== 'GITHUB_TOKEN_PLACEHOLDER';
-    const hasHardcodedGist = DEPLOYED_CONFIG.gistId && DEPLOYED_CONFIG.gistId !== 'GIST_ID_PLACEHOLDER';
+    const hasHardcodedKey = isSecret(DEPLOYED_CONFIG.apiKey);
+    const hasHardcodedPass = isSecret(DEPLOYED_CONFIG.password);
+    const hasHardcodedToken = isSecret(DEPLOYED_CONFIG.githubToken);
+    const hasHardcodedGist = isSecret(DEPLOYED_CONFIG.gistId);
 
     if (hasHardcodedKey) {
         state.settings.apiKey = DEPLOYED_CONFIG.apiKey;
         const el = document.getElementById('api-key-group');
-        if (el) el.style.display = 'none';
+        if (el) el.remove();
     }
     if (hasHardcodedPass) {
         state.settings.password = DEPLOYED_CONFIG.password;
         const el = document.getElementById('app-password-group');
-        if (el) el.style.display = 'none';
+        if (el) el.remove();
     }
     if (hasHardcodedToken) {
         state.settings.githubToken = DEPLOYED_CONFIG.githubToken;
         const el = document.getElementById('github-token-group');
-        if (el) el.style.display = 'none';
+        if (el) el.remove();
     }
     if (hasHardcodedGist) {
         state.settings.gistId = DEPLOYED_CONFIG.gistId;
         const el = document.getElementById('gist-id-group');
-        if (el) el.style.display = 'none';
+        if (el) el.remove();
     }
 
     // Hide headers if everything is hardcoded
@@ -60,11 +64,11 @@ function init() {
     }
     if (hasHardcodedToken && hasHardcodedGist) {
         const syncHeader = document.querySelector('#settings-modal h3');
-        if (syncHeader) syncHeader.style.display = 'none';
+        if (syncHeader) syncHeader.remove();
     }
     if (hasHardcodedKey && hasHardcodedPass && hasHardcodedToken && hasHardcodedGist) {
         const btn = document.getElementById('save-settings-btn');
-        if (btn) btn.style.display = 'none';
+        if (btn) btn.remove();
     }
 
     setupDragAndDrop();
@@ -93,10 +97,11 @@ function loadData() {
     const s = localStorage.getItem(SETTINGS_KEY);
     if (s) {
         const saved = JSON.parse(s);
-        state.settings.apiKey = state.settings.apiKey || saved.apiKey || '';
-        state.settings.password = state.settings.password || saved.password || '';
-        state.settings.githubToken = state.settings.githubToken || saved.githubToken || '';
-        state.settings.gistId = state.settings.gistId || saved.gistId || '';
+        // ONLY use saved if hardcoded is NOT present
+        if (!state.settings.apiKey) state.settings.apiKey = saved.apiKey || '';
+        if (!state.settings.password) state.settings.password = saved.password || '';
+        if (!state.settings.githubToken) state.settings.githubToken = saved.githubToken || '';
+        if (!state.settings.gistId) state.settings.gistId = saved.gistId || '';
 
         // Update UI inputs if they exist
         const apiInput = document.getElementById('api-key');

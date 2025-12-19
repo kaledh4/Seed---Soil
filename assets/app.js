@@ -26,7 +26,7 @@ let state = {
 
 function init() {
     loadData();
-    // Secrets override
+    // Secrets override - DEPLOYED_CONFIG always wins if set
     const hasHardcodedKey = DEPLOYED_CONFIG.apiKey && DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER';
     const hasHardcodedPass = DEPLOYED_CONFIG.password && DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER';
     const hasHardcodedToken = DEPLOYED_CONFIG.githubToken && DEPLOYED_CONFIG.githubToken !== 'GITHUB_TOKEN_PLACEHOLDER';
@@ -35,27 +35,36 @@ function init() {
     if (hasHardcodedKey) {
         state.settings.apiKey = DEPLOYED_CONFIG.apiKey;
         const el = document.getElementById('api-key-group');
-        if (el) el.remove();
+        if (el) el.style.display = 'none';
     }
     if (hasHardcodedPass) {
         state.settings.password = DEPLOYED_CONFIG.password;
         const el = document.getElementById('app-password-group');
-        if (el) el.remove();
+        if (el) el.style.display = 'none';
     }
     if (hasHardcodedToken) {
         state.settings.githubToken = DEPLOYED_CONFIG.githubToken;
         const el = document.getElementById('github-token-group');
-        if (el) el.remove();
+        if (el) el.style.display = 'none';
     }
     if (hasHardcodedGist) {
         state.settings.gistId = DEPLOYED_CONFIG.gistId;
         const el = document.getElementById('gist-id-group');
-        if (el) el.remove();
+        if (el) el.style.display = 'none';
     }
 
+    // Hide headers if everything is hardcoded
+    if (hasHardcodedKey && hasHardcodedPass) {
+        const header = document.querySelector('#settings-modal h2');
+        if (header) header.innerText = 'System Configured';
+    }
+    if (hasHardcodedToken && hasHardcodedGist) {
+        const syncHeader = document.querySelector('#settings-modal h3');
+        if (syncHeader) syncHeader.style.display = 'none';
+    }
     if (hasHardcodedKey && hasHardcodedPass && hasHardcodedToken && hasHardcodedGist) {
         const btn = document.getElementById('save-settings-btn');
-        if (btn) btn.remove();
+        if (btn) btn.style.display = 'none';
     }
 
     setupDragAndDrop();
@@ -381,12 +390,16 @@ async function processPulse() {
         item.isProcessing = true;
         renderDashboard();
         try {
-            // Truncate text if it's too long for the model (approx 20k chars)
-            const textToProcess = item.raw.substring(0, 20000);
+            const textToProcess = item.raw.substring(0, 30000); // Increased limit
 
             const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.settings.apiKey}`, 'HTTP-Referer': 'https://seed-soil.app', 'X-Title': 'Seed & Soil' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.settings.apiKey}`,
+                    'HTTP-Referer': 'https://seed-soil.app',
+                    'X-Title': 'Seed & Soil'
+                },
                 body: JSON.stringify({
                     model: 'google/gemini-2.0-flash-exp:free',
                     messages: [
@@ -396,19 +409,27 @@ async function processPulse() {
                     response_format: { type: 'json_object' }
                 })
             });
+
+            if (!r.ok) {
+                const errData = await r.json();
+                throw new Error(errData.error?.message || 'API Error');
+            }
+
             const d = await r.json();
             if (d.choices && d.choices[0]) {
-                item.seed = JSON.parse(d.choices[0].message.content);
+                const content = d.choices[0].message.content;
+                item.seed = JSON.parse(content);
                 item.isProcessing = false;
                 saveData();
                 renderDashboard();
             } else {
-                throw new Error('API Error');
+                throw new Error('No response from AI');
             }
         } catch (e) {
-            console.error(e);
+            console.error('Distillation failed:', e);
             item.isProcessing = false;
-            showToast(`Failed to distill: ${item.raw.substring(0, 20)}...`);
+            showToast(`Error: ${e.message.substring(0, 30)}...`);
+            renderDashboard();
         }
     }
 

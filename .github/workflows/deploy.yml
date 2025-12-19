@@ -1,4 +1,4 @@
-name: Deploy Seed & Soil
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -10,11 +10,15 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps: deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,6 +28,8 @@ jobs:
         run: |
           sed -i "s/OPENROUTER_API_KEY_PLACEHOLDER/${{ secrets.OPENROUTER_API_KEY }}/g" assets/app.js
           sed -i "s/APP_PASSWORD_PLACEHOLDER/${{ secrets.APP_PASSWORD }}/g" assets/app.js
+          sed -i "s/GITHUB_TOKEN_PLACEHOLDER/${{ secrets.SYNC_GITHUB_TOKEN }}/g" assets/app.js
+          sed -i "s/GIST_ID_PLACEHOLDER/${{ secrets.SYNC_GIST_ID }}/g" assets/app.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

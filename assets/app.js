@@ -3,37 +3,59 @@ const SETTINGS_KEY = 'seed_soil_settings';
 
 const DEPLOYED_CONFIG = {
     apiKey: 'OPENROUTER_API_KEY_PLACEHOLDER',
-    password: 'APP_PASSWORD_PLACEHOLDER'
+    password: 'APP_PASSWORD_PLACEHOLDER',
+    githubToken: 'GITHUB_TOKEN_PLACEHOLDER',
+    gistId: 'GIST_ID_PLACEHOLDER'
 };
 
 let state = {
     items: [],
     gaps: [],
     settings: {
-        apiKey: DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER' ? DEPLOYED_CONFIG.apiKey : '',
-        password: DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER' ? DEPLOYED_CONFIG.password : ''
+        apiKey: DEPLOYED_CONFIG.apiKey && DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER' ? DEPLOYED_CONFIG.apiKey : '',
+        password: DEPLOYED_CONFIG.password && DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER' ? DEPLOYED_CONFIG.password : '',
+        githubToken: DEPLOYED_CONFIG.githubToken && DEPLOYED_CONFIG.githubToken !== 'GITHUB_TOKEN_PLACEHOLDER' ? DEPLOYED_CONFIG.githubToken : '',
+        gistId: DEPLOYED_CONFIG.gistId && DEPLOYED_CONFIG.gistId !== 'GIST_ID_PLACEHOLDER' ? DEPLOYED_CONFIG.gistId : ''
     },
     isAuthenticated: false,
-    isProcessing: false
+    isProcessing: false,
+    isSyncing: false
 };
 
 // --- Core Logic ---
 
 function init() {
     loadData();
-    const hasHardcodedKey = DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER';
-    const hasHardcodedPass = DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER';
+    // Secrets override
+    const hasHardcodedKey = DEPLOYED_CONFIG.apiKey && DEPLOYED_CONFIG.apiKey !== 'OPENROUTER_API_KEY_PLACEHOLDER';
+    const hasHardcodedPass = DEPLOYED_CONFIG.password && DEPLOYED_CONFIG.password !== 'APP_PASSWORD_PLACEHOLDER';
+    const hasHardcodedToken = DEPLOYED_CONFIG.githubToken && DEPLOYED_CONFIG.githubToken !== 'GITHUB_TOKEN_PLACEHOLDER';
+    const hasHardcodedGist = DEPLOYED_CONFIG.gistId && DEPLOYED_CONFIG.gistId !== 'GIST_ID_PLACEHOLDER';
 
     if (hasHardcodedKey) {
         state.settings.apiKey = DEPLOYED_CONFIG.apiKey;
-        document.getElementById('api-key-group').classList.add('hidden');
+        const el = document.getElementById('api-key-group');
+        if (el) el.remove();
     }
     if (hasHardcodedPass) {
         state.settings.password = DEPLOYED_CONFIG.password;
-        document.getElementById('app-password-group').classList.add('hidden');
+        const el = document.getElementById('app-password-group');
+        if (el) el.remove();
     }
-    if (hasHardcodedKey && hasHardcodedPass) {
-        document.getElementById('save-settings-btn').classList.add('hidden');
+    if (hasHardcodedToken) {
+        state.settings.githubToken = DEPLOYED_CONFIG.githubToken;
+        const el = document.getElementById('github-token-group');
+        if (el) el.remove();
+    }
+    if (hasHardcodedGist) {
+        state.settings.gistId = DEPLOYED_CONFIG.gistId;
+        const el = document.getElementById('gist-id-group');
+        if (el) el.remove();
+    }
+
+    if (hasHardcodedKey && hasHardcodedPass && hasHardcodedToken && hasHardcodedGist) {
+        const btn = document.getElementById('save-settings-btn');
+        if (btn) btn.remove();
     }
 
     setupDragAndDrop();
@@ -43,7 +65,11 @@ function init() {
     } else {
         state.isAuthenticated = true;
         applyDecay();
-        renderDashboard();
+        if (state.settings.githubToken && state.settings.gistId) {
+            syncWithGist().then(() => renderDashboard());
+        } else {
+            renderDashboard();
+        }
     }
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 }
@@ -60,11 +86,26 @@ function loadData() {
         const saved = JSON.parse(s);
         state.settings.apiKey = state.settings.apiKey || saved.apiKey || '';
         state.settings.password = state.settings.password || saved.password || '';
+        state.settings.githubToken = state.settings.githubToken || saved.githubToken || '';
+        state.settings.gistId = state.settings.gistId || saved.gistId || '';
+
+        // Update UI inputs if they exist
+        const apiInput = document.getElementById('api-key');
+        if (apiInput) apiInput.value = state.settings.apiKey;
+        const passInput = document.getElementById('app-password');
+        if (passInput) passInput.value = state.settings.password;
+        const tokenInput = document.getElementById('github-token');
+        if (tokenInput) tokenInput.value = state.settings.githubToken;
+        const gistInput = document.getElementById('gist-id');
+        if (gistInput) gistInput.value = state.settings.gistId;
     }
 }
 
 function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items, gaps: state.gaps }));
+    if (state.settings.githubToken && state.settings.gistId) {
+        syncWithGist(true); // Background push
+    }
 }
 
 function applyDecay() {
@@ -118,6 +159,9 @@ function setupDragAndDrop() {
         } else if (text) {
             captureSeed(text);
         }
+
+        // Auto-trigger pulse if API key exists
+        if (state.settings.apiKey) processPulse();
     });
 }
 
@@ -271,19 +315,21 @@ function renderDashboard() {
             </div>
             <div class="grid grid-cols-1 gap-4">
                 ${activeItems.length > 0 ? activeItems.map(item => `
-                    <div class="glass p-5 rounded-2xl flex items-center justify-between group border border-white/5 wisdom-card">
+                    <div class="glass p-5 rounded-2xl flex items-center justify-between group border border-white/5 wisdom-card ${item.isProcessing ? 'animate-pulse' : ''}">
                         <div class="flex-1 min-w-0">
                             <h4 class="text-sm font-medium text-zinc-300 truncate">${item.seed ? item.seed.essence : item.raw}</h4>
                             <div class="flex items-center gap-3 mt-2">
                                 <div class="w-16 h-[1px] bg-white/5 rounded-full overflow-hidden">
                                     <div class="h-full bg-accent/40" style="width: ${item.soil.strength * 100}%"></div>
                                 </div>
-                                <span class="text-[8px] text-muted uppercase tracking-[0.1em]">${item.seed ? 'Distilled' : 'Raw'}</span>
+                                <span class="text-[8px] text-muted uppercase tracking-[0.1em]">${item.isProcessing ? 'Distilling...' : (item.seed ? 'Distilled' : 'Raw')}</span>
                             </div>
                         </div>
+                        ${!item.isProcessing ? `
                         <button onclick="buryItem('${item.id}')" class="opacity-0 group-hover:opacity-100 p-3 text-muted hover:text-red-500 transition-all">
                             <i data-lucide="archive" class="w-4 h-4"></i>
                         </button>
+                        ` : ''}
                     </div>
                 `).join('') : `
                     <p class="text-center py-16 text-muted/30 text-[10px] uppercase tracking-[0.2em]">The soil is quiet</p>
@@ -332,7 +378,12 @@ async function processPulse() {
     const active = state.items.filter(i => i.soil.status === 'active' && i.seed);
 
     for (const item of unpro) {
+        item.isProcessing = true;
+        renderDashboard();
         try {
+            // Truncate text if it's too long for the model (approx 20k chars)
+            const textToProcess = item.raw.substring(0, 20000);
+
             const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.settings.apiKey}`, 'HTTP-Referer': 'https://seed-soil.app', 'X-Title': 'Seed & Soil' },
@@ -340,15 +391,25 @@ async function processPulse() {
                     model: 'google/gemini-2.0-flash-exp:free',
                     messages: [
                         { role: 'system', content: 'Act as a Socratic Mentor. Extract DNA from text. Return JSON: { "essence": "1 sentence", "nuggets": ["insight1", "insight2"], "action": "1 challenge" }' },
-                        { role: 'user', content: item.raw }
+                        { role: 'user', content: textToProcess }
                     ],
                     response_format: { type: 'json_object' }
                 })
             });
             const d = await r.json();
-            item.seed = JSON.parse(d.choices[0].message.content);
-            saveData();
-        } catch (e) { console.error(e); }
+            if (d.choices && d.choices[0]) {
+                item.seed = JSON.parse(d.choices[0].message.content);
+                item.isProcessing = false;
+                saveData();
+                renderDashboard();
+            } else {
+                throw new Error('API Error');
+            }
+        } catch (e) {
+            console.error(e);
+            item.isProcessing = false;
+            showToast(`Failed to distill: ${item.raw.substring(0, 20)}...`);
+        }
     }
 
     if (active.length > 2) {
@@ -463,12 +524,69 @@ function unbury(id) {
     }
 }
 
+async function syncWithGist(pushOnly = false) {
+    if (!state.settings.githubToken || !state.settings.gistId || state.isSyncing) return;
+
+    state.isSyncing = true;
+    if (!pushOnly) showToast('Syncing with Cloud...');
+
+    try {
+        const url = `https://api.github.com/gists/${state.settings.gistId}`;
+        const headers = {
+            'Authorization': `token ${state.settings.githubToken}`,
+            'Accept': 'application/vnd.github.v3+json'
+        };
+
+        if (pushOnly) {
+            // PUSH
+            await fetch(url, {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify({
+                    files: {
+                        'seed-soil-data.json': {
+                            content: JSON.stringify({ items: state.items, gaps: state.gaps })
+                        }
+                    }
+                })
+            });
+        } else {
+            // PULL
+            const r = await fetch(url, { headers });
+            const d = await r.json();
+            if (d.files && d.files['seed-soil-data.json']) {
+                const remoteData = JSON.parse(d.files['seed-soil-data.json'].content);
+                // Simple merge: remote wins for now, or we could do timestamp check
+                state.items = remoteData.items || [];
+                state.gaps = remoteData.gaps || [];
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items, gaps: state.gaps }));
+                renderDashboard();
+            }
+        }
+    } catch (e) {
+        console.error('Sync failed:', e);
+        if (!pushOnly) showToast('Sync Failed');
+    } finally {
+        state.isSyncing = false;
+        if (!pushOnly) showToast('Sync Complete');
+    }
+}
+
 function saveSettings() {
-    state.settings.apiKey = document.getElementById('api-key').value;
-    state.settings.password = document.getElementById('app-password').value;
+    const apiInput = document.getElementById('api-key');
+    const passInput = document.getElementById('app-password');
+    const tokenInput = document.getElementById('github-token');
+    const gistInput = document.getElementById('gist-id');
+
+    if (apiInput) state.settings.apiKey = apiInput.value;
+    if (passInput) state.settings.password = passInput.value;
+    if (tokenInput) state.settings.githubToken = tokenInput.value;
+    if (gistInput) state.settings.gistId = gistInput.value;
+
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
     toggleSettings();
     showToast('Settings Saved');
+    if (state.settings.githubToken && state.settings.gistId) syncWithGist();
 }
 
 function exportData() {
